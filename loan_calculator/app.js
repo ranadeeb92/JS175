@@ -1,50 +1,34 @@
 const HTTP = require('http');
 const URL = require('url').URL;
-const HTML = require('./index');
-const STYLE =  require('./style');
+const FS = require('fs');
+const PATH = require('path');
+const ROUTER = require('router');
+const FINALHANDLER = require('finalhandler');
+const SERVESTATIC = require('serve-static');
+const REQUEST_HANDLERS = require('./handlers');
 const PORT = 3000;
-const APR = 5;
 
-function getParams(path) {
-  const myURL = new URL(path, `http://localhost:${PORT}`);
-  return myURL.searchParams;
-}
+let router = ROUTER();
+router.use(SERVESTATIC('public'));
 
-function getMonthlyInterestRate() {
-  return (APR / 100) / 12;
-}
+router.get('/', function(req, res) {
+  REQUEST_HANDLERS.getIndex(res);
+});
 
-function getLoanDurationInMonths(years) {
-  return years * 12;
-}
+router.get('/loan-offer', function(req, res) {
+  REQUEST_HANDLERS.getLoanOffer(res, req.url);
+});
 
+router.post('/loan-offer', function(req, res) {
+  REQUEST_HANDLERS.postLoanOffer(req, res);
+});
 
-function monthlyPaymentReport(params) {
-  let loanAmount = Number(params.get('amount'));
-  let loanDurationInYears = Number(params.get('duration'));
-
-  let monthyInterest = getMonthlyInterestRate();
-  let loanDurationInMonths = getLoanDurationInMonths(loanDurationInYears);
-  let monthlyPayment = loanAmount * (monthyInterest / (1 - Math.pow((1 + monthyInterest), (-loanDurationInMonths))))
-  return HTML.greateTable(loanAmount, loanDurationInYears, APR, monthlyPayment);
-  
-}
+router.get('*', function(req, res) {
+  REQUEST_HANDLERS.getNotFound(res);
+});
 
 const SERVER = HTTP.createServer((req, res) => {
-  let path = req.url;
-  let content = monthlyPaymentReport(getParams(path));
-
-  if(path === '/style.css') {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/css');
-    res.write(STYLE);
-    res.end();
-  } else {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/html');
-    res.write(HTML.START+content+HTML.END);
-    res.end();
-  }
+  router(req, res, FINALHANDLER(req, res));
 });
 
 SERVER.listen(PORT, () => {
