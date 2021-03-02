@@ -2,9 +2,20 @@ const express = require('express');
 const morgan = require('morgan');
 const {validationResult} = require("express-validator");
 const validations = require('./validations');
-const {Contact, sortContacts, getContacts} = require('./data');
+const session = require('express-session');
+const store = require('connect-loki');
+const flash = require('express-flash');
+const {Contact, sortContacts, addContact, getContacts, clone } = require('./data');
 const PORT = 3000;
+
 const app = express();
+const LokiStore = store(session);
+
+let contact1 = addContact(new Contact('Mike', 'Jones', '281-330-8004'));
+let contact2 = addContact(new Contact('Jenny', 'Keys', '768-867-5309'));
+let contact3 = addContact(new Contact('Max', 'Entiger', '214-748-3647'));
+let contact4 = addContact(new Contact('Alicia', 'Keys', '515-489-4608'));
+
 
 // view engine
 app.set('views', './views');
@@ -14,12 +25,33 @@ app.set('view engine', 'pug');
 app.use(express.static('public'));
 app.use(express.urlencoded({extended: false}));
 app.use(morgan('common'));
+app.use(session({
+  cookie: {
+    httpOnly: true,
+    maxAge: 31 * 24 * 60 * 60 * 1000,
+    path: "/",
+    secure: false,
+  },
+  name: "launch-school-contacts-manager-session-id",
+  resave: false,
+  saveUninitialized: true,
+  secret: "this is not very secure",
+  store: new LokiStore({}),
+}));
+app.use(flash());
 
-let contact1 = new Contact('Mike', 'Jones', '281-330-8004');
-let contact2 = new Contact('Jenny', 'Keys', '768-867-5309');
-let contact3 = new Contact('Max', 'Entiger', '214-748-3647');
-let contact4 = new Contact('Alicia', 'Keys', '515-489-4608');
+app.use((req, res, next) => {
+  if(!("contactData" in req.session)) {
+    req.session.contactData = clone(getContacts());
+  }
+  next();
+});
 
+app.use((req, res, next) => {
+  res.locals.flash = req.session.flash;
+  delete req.session.flash;
+  next();
+})
 
 // routes
 app.get('/', (req, res) => {
@@ -28,32 +60,13 @@ app.get('/', (req, res) => {
 
 app.get('/contacts', (req, res) => {
   res.render('contacts', {
-    contacts: sortContacts()
+    contacts: sortContacts(req.session.contactData)
   })
 });
 
 app.get('/contacts/new', (req, res) => {
   res.render('new-contact')
 });
-
-// app.post('/contacts/new', (req, res)=> {
-//   let errorMessages = [];
-//   let newContact = {...req.body};
-//   console.log(newContact)
-//   for (let key in newContact) {
-//     if (newContact[key].length === 0) {
-//       errorMessages.push(`${key} is required.`)
-//     } 
-//   }
-//   if(errorMessages.length > 0) {
-//     res.render('new-contact',  {
-//       errorMessages: errorMessages
-//     });
-//   } else {
-//     new Contact(newContact.firstName, newContact.lastName, newContact.phoneNumber);
-//     res.redirect('/contacts')
-//   }
-// });
 
 app.post('/contacts/new', 
   // Validation-Chains
@@ -66,8 +79,9 @@ app.post('/contacts/new',
   (req, res, next) => {
     let errors = validationResult(req);
     if(!errors.isEmpty()) {
+      errors.array().forEach(error => req.flash("error", error.msg));
       res.render("new-contact", {
-        errorMessages: errors.array().map(error => error.msg),
+        flash: req.flash(),
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         phoneNumber: req.body.phoneNumber 
@@ -77,11 +91,10 @@ app.post('/contacts/new',
     }
   },
   (req, res) => {
-    new Contact(req.body.firstName, req.body.lastName, req.body.phoneNumber);
+    req.session.contactData.push(new Contact(req.body.firstName, req.body.lastName, req.body.phoneNumber));
+    req.flash("success", "New contact added to list!");
     res.redirect('/contacts')
-  }
-
-);
+  });
 
 
 

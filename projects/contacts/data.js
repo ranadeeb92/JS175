@@ -5,15 +5,15 @@ class Contact {
     this.firstName = firstName;
     this.lastName = lastName;
     this.phoneNumber = phoneNumber;
-    this.add(this);
-  }
-  add(contact) {
-    contacts.push(contact);
   }
 }
 
-function sortContacts() {
-  return contacts.slice().sort((a, b) => {
+function addContact(contact) {
+  contacts.push(contact);
+} 
+
+function sortContacts(data) {
+  return data.slice().sort((a, b) => {
     if(a.lastName < b.lastName) {
       return -1;
     } else if(a.lastName > b.lastName) {
@@ -31,6 +31,12 @@ function sortContacts() {
 function getContacts() {
   return contacts.slice();
 }
+
+const clone = object => {
+  return JSON.parse(JSON.stringify(object));
+}
+
+
 module.exports = {
-  Contact, sortContacts, getContacts
+  Contact, sortContacts, getContacts, addContact, clone
 }
