@@ -28,6 +28,9 @@ function sortContacts() {
   });
 }
 
+function getContacts() {
+  return contacts.slice();
+}
 module.exports = {
-  Contact, sortContacts
+  Contact, sortContacts, getContacts
 }
