@@ -46,10 +46,37 @@ app.get('/', routeController.backHome);
 app.get('/lists', routeController.home);
 
 // create a new todo list 
-app.post('/lists', validators.TitleValidator, routeController.addNewList)
+app.post('/lists', validators.TodoListTitleValidator, routeController.addNewList)
 
 // get add new list page
 app.get('/lists/new', routeController.NewList)
+
+// get a specific todo list
+app.get('/lists/:todoListId', routeController.getList)
+
+// change a todo status
+app.post('/lists/:todoListId/todos/:todoId/toggle', routeController.toggleTodo)
+
+// delete a todo
+app.post('/lists/:todoListId/todos/:todoId/destroy', routeController.deleteTodo);
+
+// complete All todo for a specific todo list
+app.post('/lists/:todoListId/complete_all', routeController.completeAll)
+
+// add a new todo to a specific todo list
+app.post('/lists/:todoListId/todos', validators.TodoTitleValidator , routeController.addNewTodo)
+
+// edit todo list
+app.get('/lists/:todoListId/edit', routeController.editList)
+app.post('/lists/:todoListId/edit', validators.TodoListTitleValidator, routeController.edit);
+
+// delete a list
+app.post('/lists/:todoListId/destroy', routeController.deleteAList)
+// Error handler
+app.use((err, req, res, _next) => {
+  console.log(err);
+  res.status(404).send(err.message);
+});
 
 // listener
 app.listen(PORT, HOST, () => {
